@@ -1,0 +1,30 @@
+{% extends 'layout.html' %}
+
+{% block body %}
+    <h2 style="padding-top: 20px">Feedback from Users</h2>
+   	<hr>
+
+   	<table class = "table table-striped">
+   		<tr>
+   			<th>ID</th>
+            <th>Username</th>
+   			<th>Feedback</th>
+   			<th>Date</th>
+            <th></th>
+   		</tr>
+   		{% for feed in feedback %}
+   			<tr>
+   				<td>{{feed.id}}</td>
+               <td>{{feed.username}}</td>
+               <td>{{feed.feedback}}</td>
+   				<td>{{feed.posted_date}}</td>
+               <td>
+                  <form action="{{url_for('delete_feed', id = feed.id)}}" method="post">
+                     <input type="hidden" name="_method" value="DELETE">
+                     <input type="submit" value="Delete" class="btn btn-danger">
+                  </form>
+               </td>
+   			</tr>
+   		{% endfor %}
+   	</table>
+{% endblock %}

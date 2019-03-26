@@ -122,7 +122,8 @@ def purifications():
 
     cur.close()
 
-@app.route('/purificationsList')
+#calling from app
+@app.route('/purificationsList', methods=['GET'])
 def purificationsList():
     cur = mysql.connection.cursor()
     #get articles
@@ -274,10 +275,65 @@ def login():
 
     return jsonify({'message':'Login Failed.'})   
  
+#for app  
+@app.route('/feedback', methods=['POST'])
+def feedback():
+    if request.method == 'POST':
+        username = request.get_json()['username']
+        feedback = request.get_json()['feedback']
 
+        #Create cursor
+
+        cur = mysql.connection.cursor()  #use this cursor to execute commands
+
+        #Execute query
+        cur.execute("INSERT INTO feedback (username, feedback) VALUES(%s, %s)", (username, feedback))
+
+        #commit to db
+
+        mysql.connection.commit()
+
+        #close connection 
+
+        cur.close()
+
+        data = {'message': 'success'}
+        return jsonify(data), 201
+
+    data = {'message': 'failed'}
+    return jsonify(data), 200
+
+#for admin
+@app.route('/feedbacks', methods=['GET'])
+def feedbacks():
+    cur = mysql.connection.cursor()
+    result = cur.execute("SELECT * FROM feedback")
+
+    feedback = cur.fetchall()
+
+    if result > 0:
+        return render_template('feedback.html', feedback=feedback)
+    else:
+        msg = 'No feedback found'
+        return render_template('feedback.html', msg=msg)
+
+    cur.close()
+
+@app.route('/delete_feed/<string:id>', methods = ['POST'])
+def delete_feed(id):
+    cur = mysql.connection.cursor()
+
+    cur.execute("DELETE FROM feedback WHERE id = %s", [id])
+
+    mysql.connection.commit()
+
+    cur.close()
+
+    flash('Feed deleted.','success')
+
+    return redirect(url_for('feedbacks'))
 
 if __name__ == '__main__':
-
     app.secret_key = 'secret123'
     app.run(host='0.0.0.0')
 
