@@ -1,0 +1,36 @@
+{% extends 'layout.html' %}
+
+{% block body %}
+    <h1 style="padding-top: 20px">Users</h1>
+   	<hr>
+
+   	<table class = "table table-striped">
+   		<tr>
+   			<th>ID</th>
+   			<th>Fullname</th>
+   			<th>Username</th>
+   			<th>Phone_No</th>
+   			<th>Street</th>
+            <th>City</th>
+            <th></th>
+            <th></th>
+   		</tr>
+   		{% for user in users %}
+   			<tr>
+   				<td>{{user.id}}</td>
+   				<td>{{user.fullname}}</td>
+   				<td>{{user.username}}</td>
+               <td>{{user.phone_no}}</td>
+               <td>{{user.street}}</td>
+               <td>{{user.city}}</td>
+               <td><a href="edit_user/{{user.id}}" class = "btn btn-primary pull-right">Edit</a></td>
+               <td>
+               <form action="{{url_for('delete_user', id = user.id)}}" method="post">
+                  <input type="hidden" name="_method" value="DELETE">
+                  <input type="submit" value="Delete" class="btn btn-danger">
+               </form>
+               </td>
+   			</tr>
+   		{% endfor %}
+   	</table>
+{% endblock %}
