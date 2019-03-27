@@ -1,0 +1,11 @@
+{% extends 'layout.html' %}
+
+{% block body %}
+    <title>Upload new File</title>
+    <h1>Upload new File</h1>
+    <form id="upload-form" action = "http://0.0.0.0:5000/uploader" method="post" enctype="multipart/form-data">
+    	<input type="file" name="file" accept="image/*">
+    	<input type="submit" value="send" name="Upload" class="btn-primary">
+
+    </form>
+{% endblock %}

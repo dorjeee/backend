@@ -1,10 +1,15 @@
-from flask import Flask, render_template, flash, redirect, url_for, session, logging, request, jsonify
+from flask import Flask, render_template, flash, redirect, url_for, session, logging, request, jsonify,send_from_directory
 from data import Purifications
 from flask_mysqldb import MySQL
 from wtforms import Form, StringField, TextAreaField, PasswordField, validators
 from passlib.hash import sha256_crypt
 from functools import wraps
+from werkzeug.utils import secure_filename
+import os
+from colorExtractor import color_extract
 
+UPLOAD_FOLDER = './images'
+ALLOWED_EXTENSIONS = set(['txt', 'pdf', 'png', 'jpg', 'jpeg', 'gif'])
 
 app = Flask(__name__)
 app.debug = True
@@ -15,6 +20,7 @@ app.config['MYSQL_USER'] = 'root'
 app.config['MYSQL_PASSWORD'] = 'root'
 app.config['MYSQL_DB'] = 'waterTester'
 app.config['MYSQL_CURSORCLASS'] = 'DictCursor'
+app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 
 #Initialze MYSQL
 
@@ -23,7 +29,7 @@ mysql = MySQL(app)
 
 @app.route('/')
 def index():
-    return render_template('home.html')
+    return render_template('upload.html')
 
 @app.route('/users')
 def users():
@@ -266,12 +272,12 @@ def login():
                 return jsonify({'message':'verified'})
             else:
                 error = 'Invalid Login'
-                return jsonify({'message':'error'}) 
+                return jsonify({'message':'Invalid login'}) 
             #closed connection
             cur.close()
         else:
             error = 'Username not found'
-            return jsonify(error)  
+            return jsonify({'message':'User not found'})  
 
     return jsonify({'message':'Login Failed.'})   
  
@@ -332,6 +338,16 @@ def delete_feed(id):
     flash('Feed deleted.','success')
 
     return redirect(url_for('feedbacks'))
+
+@app.route('/uploader', methods = ['GET', 'POST'])
+def upload_file():
+   if request.method == 'POST':
+      f = request.files['file']
+      f.save(os.path.join(app.config['UPLOAD_FOLDER'],f.filename))
+      result = color_extract(f.filename) 
+      return jsonify(result)
+      # return 'file uploaded successfully'
+
 
 if __name__ == '__main__':
     app.secret_key = 'secret123'
