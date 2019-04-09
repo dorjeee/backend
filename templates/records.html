@@ -1,0 +1,48 @@
+{% extends 'layout.html' %}
+
+{% block body %}
+    <h1 style="padding-top: 20px">Records</h1>
+   	<hr>
+
+   	<table class = "table table-striped">
+   		<tr>
+   			<th>ID</th>
+            <th>User_ID</th>
+   			<th>Title</th>
+   			<th>Total_Hardness</th>
+   			<th>Free_Chlorine</th>
+   			<th>Iron</th>
+            <th>Copper</th>
+            <th>Lead</th>
+            <th>Nitrate</th>
+            <th>Nitrite</th>
+            <th>Total_Alkalinity</th>
+            <th>pH</th>
+            <th>Posted_On</th>
+            <th>Action</th>
+   		</tr>
+   		{% for record in records %}
+   			<tr>
+   				<td>{{record.id}}</td>
+   				<td>{{record.user_id}}</td>
+   				<td>{{record.title}}</td>
+               <td>{{record.hardness}}</td>
+               <td>{{record.free_chlorine}}</td>
+               <td>{{record.iron}}</td>
+               <th>{{record.copper}}</th>
+               <th>{{record.lead}}</th>
+               <th>{{record.nitrate}}</th>
+               <th>{{record.nitrite}}</th>
+               <th>{{record.alkalinity}}</th>
+               <th>{{record.ph}}</th>
+               <th>{{record.posted_on}}</th>
+               <td>
+               <form action="{{url_for('delete_record', id = record.id)}}" method="post">
+                  <input type="hidden" name="_method" value="DELETE">
+                  <input type="submit" value="Delete" class="btn btn-danger">
+               </form>
+               </td>
+   			</tr>
+   		{% endfor %}
+   	</table>
+{% endblock %}

@@ -26,11 +26,130 @@ app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 
 mysql = MySQL(app)
 
-
 @app.route('/')
 def index():
-    return render_template('upload.html')
+    return render_template('admin.html')
 
+
+@app.route('/admin', methods = ['POST', 'GET'])
+def admin():
+    if request.method == 'POST':
+        username = request.form['username']
+        password_candidate = request.form['password']
+
+        cur = mysql.connection.cursor()
+        result = cur.execute("SELECT * FROM admin WHERE username = %s", [username])
+
+        if result > 0:
+            data = cur.fetchone()
+            password = data['password']
+
+            if(password_candidate == password):
+                app.logger.info('PASSWORD MATCHED.')
+                return redirect(url_for('home'))
+            else:
+                error = 'Invalid login.'
+                return render_template('admin.html', error = error)
+        else:
+            error = 'No such user.'
+            return render_template('admin.html', error = error )
+
+    return jsonify({'message':'Login Failed.'}) 
+
+# def is_loggedIn(f):
+#     @wraps(f)
+#     def wrap(*args, **kwargs):
+#         if 'logged_in' in session:
+#             return f(*args, **kwargs)
+#         else:
+#             flash('Unauthorized, Please login', 'danger')
+#             return redirect(url_for('/'))
+#     return wrap
+
+
+@app.route('/home', methods = ['GET', 'POST'])
+def home(): 
+    return render_template('home.html')
+
+class RegisterForm(Form):
+    fullname = StringField('fullname', [validators.Length(min=4, max=50)])
+    username = StringField('username', [validators.Length(min=4, max=10)])
+    password = PasswordField('Password',[
+        validators.DataRequired(),
+        validators.EqualTo('confirm', message = 'Passwords donot match.')
+        ])
+    confirm = PasswordField("Confirm password") 
+    
+
+#Register
+@app.route('/register', methods=['POST'])
+def register():
+    form = RegisterForm(request.form)
+    if request.method == 'POST':
+        fullname = request.get_json()['fullname']
+        username = request.get_json()['username']
+        password = sha256_crypt.encrypt(str(request.get_json()['password'])) #need to encrypt before submitting
+        phone_no =  request.get_json()['phone_no']
+        street = request.get_json()['street']
+        city = request.get_json()['city']
+
+        #Create cursor
+
+        cur = mysql.connection.cursor()  #use this cursor to execute commands
+
+        #Execute query
+        cur.execute("INSERT INTO users (fullname, username, password, phone_no, street, city) VALUES(%s, %s, %s, %s, %s, %s)", (fullname, username, password, phone_no, street, city))
+
+        #commit to db
+
+        mysql.connection.commit()
+
+        #close connection 
+
+        cur.close()
+
+        data = {'message': 'success'}
+        return jsonify(data), 201
+
+    data = {'message': 'failed'}
+    return jsonify(data), 200
+
+
+@app.route('/login', methods = ['GET', 'POST'])
+def login():
+    if request.method == 'POST':
+        # getting the form fields
+        username = request.get_json()['username']
+        password_candidate = request.get_json()['password']
+
+        #create cursor 
+
+        cur = mysql.connection.cursor()
+
+        #get user by username
+        result = cur.execute("SELECT * FROM users WHERE username = %s", [username])
+
+        if result > 0:
+            #get stored hash
+            data = cur.fetchone() #check the query, matches the first one it gets
+            password = data['password']
+
+            #compare the password
+            if sha256_crypt.verify(password_candidate, password):
+                #passed
+                return jsonify(data)
+            else:
+                error = 'Invalid Login'
+                return jsonify({'message':'Invalid login'}) 
+            #closed connection
+            cur.close()
+        else:
+            error = 'Username not found'
+            return jsonify({'message':'User not found'})  
+
+    return jsonify({'message':'Login Failed.'})   
+
+#Uers
 @app.route('/users')
 def users():
     #Create cursor
@@ -47,14 +166,6 @@ def users():
         return render_template('users.html', msg=msg)
 
     cur.close()
-
-#User form 
-class UserForm(Form):
-    fullname = StringField('Fullname',[validators.Length(max=30)])
-    username = StringField('Username',[validators.Length(max=30)])
-    phone_no = StringField('Phone_no')
-    street = StringField('Street',[validators.Length(max=30)])
-    city = StringField('City',[validators.Length(max=30)])
 
 
 @app.route('/edit_user/<string:id>', methods=['POST','GET'])
@@ -214,86 +325,20 @@ def delete_article(id):
 
     return redirect(url_for('purifications'))
 
-
-@app.route('/register', methods=['POST'])
-def register():
-    if request.method == 'POST':
-        fullname = request.get_json()['fullname']
-        username = request.get_json()['username']
-        password = sha256_crypt.encrypt(str(request.get_json()['password'])) #need to encrypt before submitting
-        phone_no =  request.get_json()['phone_no']
-        street = request.get_json()['street']
-        city = request.get_json()['city']
-
-        #Create cursor
-
-        cur = mysql.connection.cursor()  #use this cursor to execute commands
-
-        #Execute query
-        cur.execute("INSERT INTO users (fullname, username, password, phone_no, street, city) VALUES(%s, %s, %s, %s, %s, %s)", (fullname, username, password, phone_no, street, city))
-
-        #commit to db
-
-        mysql.connection.commit()
-
-        #close connection 
-
-        cur.close()
-
-        data = {'message': 'success'}
-        return jsonify(data), 201
-
-    data = {'message': 'failed'}
-    return jsonify(data), 200
-
-
-@app.route('/login', methods = ['GET', 'POST'])
-def login():
-    if request.method == 'POST':
-        # getting the form fields
-        username = request.get_json()['username']
-        password_candidate = request.get_json()['password']
-
-        #create cursor 
-
-        cur = mysql.connection.cursor()
-
-        #get user by username
-        result = cur.execute("SELECT * FROM users WHERE username = %s", [username])
-
-        if result > 0:
-            #get stored hash
-            data = cur.fetchone() #check the query, matches the first one it gets
-            password = data['password']
-
-            #compare the password
-            if sha256_crypt.verify(password_candidate, password):
-                #passed
-                return jsonify({'message':'verified'})
-            else:
-                error = 'Invalid Login'
-                return jsonify({'message':'Invalid login'}) 
-            #closed connection
-            cur.close()
-        else:
-            error = 'Username not found'
-            return jsonify({'message':'User not found'})  
-
-    return jsonify({'message':'Login Failed.'})   
  
 #for app  
-@app.route('/feedback', methods=['POST'])
-def feedback():
+@app.route('/feedback/<int:id>', methods=['POST'])
+def feedback(id):
     if request.method == 'POST':
-        username = request.get_json()['username']
         feedback = request.get_json()['feedback']
+        posted_date = request.get_json()['posted_date']
 
         #Create cursor
 
         cur = mysql.connection.cursor()  #use this cursor to execute commands
 
         #Execute query
-        cur.execute("INSERT INTO feedback (username, feedback) VALUES(%s, %s)", (username, feedback))
+        cur.execute("INSERT INTO feedback(feedback, posted_date, user_id) VALUES(%s, %s, %s)", (feedback, posted_date, id))
 
         #commit to db
 
@@ -333,27 +378,105 @@ def delete_feed(id):
 
     mysql.connection.commit()
 
-    cur.close()
+    cur.close() 
 
     flash('Feed deleted.','success')
 
     return redirect(url_for('feedbacks'))
 
-@app.route('/uploader', methods = ['GET', 'POST'])
+# for app  
+@app.route('/records/<int:id>', methods=['POST'])
+def records(id):
+    if request.method == 'POST':
+        title = request.get_json()['title']
+        hardness = request.get_json()['total_hardness']
+        free_chlorine = request.get_json()['free_chlorine']
+        iron = request.get_json()['iron']
+        copper = request.get_json()['copper']
+        lead = request.get_json()['lead']
+        nitrate = request.get_json()['nitrate']
+        nitrite = request.get_json()['nitrite']
+        alkalinity = request.get_json()['total_alkalinity']
+        ph = request.get_json()['ph']
+        posted_on = request.get_json()['posted_on']
+
+        #Create cursor
+
+        cur = mysql.connection.cursor()  #use this cursor to execute commands
+
+        #Execute query
+        cur.execute("INSERT INTO records(title,hardness, free_chlorine, iron, copper, lead, nitrate, nitrite,alkalinity,ph,posted_on, user_id) VALUES(%s, %s, %s,%s, %s, %s,%s, %s, %s,%s, %s, %s)", (title,hardness, free_chlorine, iron, copper, lead, nitrate, nitrite,alkalinity,ph, posted_on, id))
+
+        #commit to db
+
+        mysql.connection.commit()
+
+        #close connection 
+
+        cur.close()
+
+        data = {'message': 'success'}
+        return jsonify(data), 201
+
+    data = {'message': 'failed'}
+    return jsonify(data), 200
+
+#for admin
+@app.route('/recordList', methods=['GET'])
+def recordList():
+    cur = mysql.connection.cursor()
+    result = cur.execute("SELECT * FROM records")
+
+    records = cur.fetchall()
+
+    if result > 0:
+        return render_template('records.html', records=records)
+    else:
+        msg = 'No record found'
+        return render_template('records.html', msg=msg)
+
+    cur.close()
+
+@app.route('/delete_record/<int:id>', methods = ['POST'])
+def delete_record(id):
+    cur = mysql.connection.cursor()
+
+    cur.execute("DELETE FROM records WHERE id = %s", [id])
+
+    mysql.connection.commit()
+
+    cur.close() 
+
+    flash('Feed deleted.','success')
+
+    return redirect(url_for('feedbacks'))
+
+@app.route('/uploader', methods = ['GET', 'POST'])  
 def upload_file():
-   if request.method == 'POST':
-      f = request.files['file']
-      f.save(os.path.join(app.config['UPLOAD_FOLDER'],f.filename))
-      result = color_extract(f.filename) 
-      return jsonify(result)
-      # return 'file uploaded successfully'
+    result = None
+    if request.method == 'POST':
+        f = request.files['file']
+        f.save(os.path.join(app.config['UPLOAD_FOLDER'],f.filename))
+         
+    # result = color_extract('./images/final.jpg')
+    # print (result)
+        return jsonify(result)
+        #return 'file uploaded successfully'
+    elif request.method == 'GET':
+        result = color_extract('./images/image.png')
+        return jsonify(result), 200
+    else:
+        return jsonify({'message': 'upload failed'}), 404
+
+ 
+@app.route('/logout')
+def logout():
+    session.clear();
+    flash('You are now logged out.', 'success')
+    return redirect(url_for('/'))
 
 
 if __name__ == '__main__':
     app.secret_key = 'secret123'
     app.run(host='0.0.0.0')
-
-
-
-
 

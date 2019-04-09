@@ -7,15 +7,15 @@
    	<table class = "table table-striped">
    		<tr>
    			<th>ID</th>
-            <th>Username</th>
+            <th>UserID</th>
    			<th>Feedback</th>
    			<th>Date</th>
-            <th></th>
+            <th>Action</th>
    		</tr>
    		{% for feed in feedback %}
    			<tr>
    				<td>{{feed.id}}</td>
-               <td>{{feed.username}}</td>
+               <td>{{feed.user_id}}</td>
                <td>{{feed.feedback}}</td>
    				<td>{{feed.posted_date}}</td>
                <td>

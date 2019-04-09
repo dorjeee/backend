@@ -26,11 +26,11 @@ def color_extract(filename):
 	elements = ['hardness', 'chlorine', 'iron','copper','lead','nitrate','nitrite', 'alkalinity', 'pH']
 	avg_color = {}
 
-	for i in range(8): #getting average rgb values
+	for i in range(9): #getting average rgb values
 		avg_color_per_row = numpy.average(properties[i], axis=0) 
 		avg_color[i] = numpy.average(avg_color_per_row, axis=0)
 
-	for i in range(8): 
+	for i in range(9): 
 	# print('For',elements[i],': ',np.round(avg_color[i])) #round up values
 	
 		red = np.round(avg_color[i])[0]
