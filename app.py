@@ -2,11 +2,13 @@ from flask import Flask, render_template, flash, redirect, url_for, session, log
 from data import Purifications
 from flask_mysqldb import MySQL
 from wtforms import Form, StringField, TextAreaField, PasswordField, validators
+from wtforms.fields.html5 import EmailField
 from passlib.hash import sha256_crypt
 from functools import wraps
 from werkzeug.utils import secure_filename
 import os
 from colorExtractor import color_extract
+from flask_wtf import Form
 
 UPLOAD_FOLDER = './images'
 ALLOWED_EXTENSIONS = set(['txt', 'pdf', 'png', 'jpg', 'jpeg', 'gif'])
@@ -80,7 +82,6 @@ class RegisterForm(Form):
         ])
     confirm = PasswordField("Confirm password") 
     
-
 #Register
 @app.route('/register', methods=['POST'])
 def register():
@@ -89,6 +90,7 @@ def register():
         fullname = request.get_json()['fullname']
         username = request.get_json()['username']
         password = sha256_crypt.encrypt(str(request.get_json()['password'])) #need to encrypt before submitting
+        confirm = request.get_json()['confirm']
         phone_no =  request.get_json()['phone_no']
         street = request.get_json()['street']
         city = request.get_json()['city']
@@ -358,7 +360,7 @@ def feedback(id):
 @app.route('/feedbacks', methods=['GET'])
 def feedbacks():
     cur = mysql.connection.cursor()
-    result = cur.execute("SELECT * FROM feedback")
+    result = cur.execute("SELECT f.id as id, user_id, username, feedback, posted_date FROM feedback f JOIN users u ON u.id = f.user_id")
 
     feedback = cur.fetchall()
 
@@ -425,7 +427,7 @@ def records(id):
 @app.route('/recordList', methods=['GET'])
 def recordList():
     cur = mysql.connection.cursor()
-    result = cur.execute("SELECT * FROM records")
+    result = cur.execute("SELECT r.id as id, username, title,hardness, free_chlorine, iron, copper, lead, nitrate, nitrite,alkalinity,ph,posted_on FROM records r JOIN users u ON u.id = r.user_id")
 
     records = cur.fetchall()
 
@@ -468,7 +470,27 @@ def upload_file():
     else:
         return jsonify({'message': 'upload failed'}), 404
 
- 
+class ForgotForm(Form):
+    email = EmailField('Email',
+    [validators.DataRequired(), validators.Email()])
+
+class PasswordResetForm(Form):
+    current_password = PasswordField('Current Password',
+        [validators.DataRequired(),
+        validators.Length(min=4, max =80)])
+
+def send_password_reset_email(email):
+    password
+
+@app.route('/forgotPassword', methods = ['GET', 'POST'])  
+def forgotPassword():
+    error = None
+    message = None
+    form = ForgotForm()
+    if form.validate_on_submit():
+        pass
+    return render_template('forgotPassword.html', form=form, error=error, message=message)
+
 @app.route('/logout')
 def logout():
     session.clear();
