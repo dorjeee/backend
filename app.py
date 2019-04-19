@@ -32,15 +32,14 @@ mysql = MySQL(app)
 def index():
     return render_template('admin.html')
 
-
 @app.route('/admin', methods = ['POST', 'GET'])
 def admin():
     if request.method == 'POST':
-        username = request.form['username']
+        user = request.form['username']
         password_candidate = request.form['password']
 
         cur = mysql.connection.cursor()
-        result = cur.execute("SELECT * FROM admin WHERE username = %s", [username])
+        result = cur.execute("SELECT * FROM admin WHERE username = %s", [user])
 
         if result > 0:
             data = cur.fetchone()
@@ -48,7 +47,14 @@ def admin():
 
             if(password_candidate == password):
                 app.logger.info('PASSWORD MATCHED.')
+
+                session['logged_in'] = True
+                session['username'] = user
+
+                flash('You are now logged in.','success')
+
                 return redirect(url_for('home'))
+
             else:
                 error = 'Invalid login.'
                 return render_template('admin.html', error = error)
@@ -58,18 +64,26 @@ def admin():
 
     return jsonify({'message':'Login Failed.'}) 
 
-# def is_loggedIn(f):
-#     @wraps(f)
-#     def wrap(*args, **kwargs):
-#         if 'logged_in' in session:
-#             return f(*args, **kwargs)
-#         else:
-#             flash('Unauthorized, Please login', 'danger')
-#             return redirect(url_for('/'))
-#     return wrap
+# Check if user logged in
+def logged_in(f):
+    @wraps(f)
+    def wrap(*args, **kwargs):
+        if 'logged_in' in session:
+            return f(*args, **kwargs)
+        else:
+            flash('Unauthorized, Please login', 'danger')
+            return redirect(url_for('/'))
+    return wrap
 
+@app.route('/logout')
+@logged_in
+def logout():
+    session.clear();
+    flash('You are now logged out.', 'success')
+    return redirect(url_for('/'))
 
 @app.route('/home', methods = ['GET', 'POST'])
+@logged_in
 def home(): 
     return render_template('home.html')
 
@@ -116,7 +130,7 @@ def register():
     data = {'message': 'failed'}
     return jsonify(data), 200
 
-
+#api
 @app.route('/login', methods = ['GET', 'POST'])
 def login():
     if request.method == 'POST':
@@ -153,6 +167,7 @@ def login():
 
 #Uers
 @app.route('/users')
+@logged_in
 def users():
     #Create cursor
     cur = mysql.connection.cursor()
@@ -168,7 +183,6 @@ def users():
         return render_template('users.html', msg=msg)
 
     cur.close()
-
 
 @app.route('/edit_user/<string:id>', methods=['POST','GET'])
 def edit_user(id):
@@ -251,7 +265,6 @@ def purificationsList():
     purification = cur.fetchall()
 
     return jsonify(purification)
-
 
 #article form 
 class ArticleForm(Form):
@@ -402,6 +415,7 @@ def records(id):
         ph = request.get_json()['ph']
         posted_on = request.get_json()['posted_on']
 
+
         #Create cursor
 
         cur = mysql.connection.cursor()  #use this cursor to execute commands
@@ -409,6 +423,8 @@ def records(id):
         #Execute query
         cur.execute("INSERT INTO records(title,hardness, free_chlorine, iron, copper, lead, nitrate, nitrite,alkalinity,ph,posted_on, user_id) VALUES(%s, %s, %s,%s, %s, %s,%s, %s, %s,%s, %s, %s)", (title,hardness, free_chlorine, iron, copper, lead, nitrate, nitrite,alkalinity,ph, posted_on, id))
 
+            #result = cur.execute("SELECT r.id as id, username, title,hardness, free_chlorine, iron, copper, lead, nitrate, nitrite,alkalinity,ph,posted_on FROM records r JOIN users u ON u.id = r.user_id WHERE u.id = %s",(user))
+        
         #commit to db
 
         mysql.connection.commit()
@@ -429,6 +445,8 @@ def recordList():
     cur = mysql.connection.cursor()
     result = cur.execute("SELECT r.id as id, username, title,hardness, free_chlorine, iron, copper, lead, nitrate, nitrite,alkalinity,ph,posted_on FROM records r JOIN users u ON u.id = r.user_id")
 
+    print (result)
+
     records = cur.fetchall()
 
     if result > 0:
@@ -436,6 +454,23 @@ def recordList():
     else:
         msg = 'No record found'
         return render_template('records.html', msg=msg)
+
+    cur.close()
+
+#api from phone
+@app.route('/recordRequest', methods=['GET','POST'])
+def recordRequest():
+    cur = mysql.connection.cursor()
+
+    user = request.get_json()['user']
+
+    result = cur.execute('SELECT r.id as id, username, title,hardness, iron, copper, lead, nitrate, nitrite,alkalinity,posted_on FROM records r JOIN users u ON u.id = r.user_id WHERE u.id = %s',[user])
+    
+    records = cur.fetchall()
+    print (result)
+    
+    if result > 0:
+        return jsonify(records)
 
     cur.close()
 
@@ -479,8 +514,8 @@ class PasswordResetForm(Form):
         [validators.DataRequired(),
         validators.Length(min=4, max =80)])
 
-def send_password_reset_email(email):
-    password
+# def send_password_reset_email(email):
+#     password
 
 @app.route('/forgotPassword', methods = ['GET', 'POST'])  
 def forgotPassword():
@@ -490,12 +525,6 @@ def forgotPassword():
     if form.validate_on_submit():
         pass
     return render_template('forgotPassword.html', form=form, error=error, message=message)
-
-@app.route('/logout')
-def logout():
-    session.clear();
-    flash('You are now logged out.', 'success')
-    return redirect(url_for('/'))
 
 
 if __name__ == '__main__':
